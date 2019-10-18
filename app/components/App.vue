@@ -1,60 +1,81 @@
 <template>
   <Page @loaded="pageLoaded">
+
     <ActionBar>
       <StackLayout orientation="horizontal">
         <Label text="Weather" fontSize="20" verticalAlignment="center" color="#ffffff"/>
       </StackLayout>
     </ActionBar>
+
     <PullToRefresh @refresh="refreshList" class="refresh">
-      <StackLayout class="p-20">
-        <Label textWrap="true" class="text-center temperature-view temperatureCityColor">
-          <FormattedString v-if="weather.main">
-            <Span :text="(weather.main.temp % 1 < 0.5) ? Math.floor(weather.main.temp) : Math.ceil(weather.main.temp)" />
-            <Span text=" °C" />
-          </FormattedString>
-        </Label>
-        <Label :text="weather.name" class="h3 text-center temperatureCityColor" />
-        <Label :text="lastUpdated" class="h4 text-center lastUpdatedColor" />
+      <ScrollView orientation="vertical">
+        <StackLayout class="p-20">
 
+          <SearchBar hint="Search for a city" v-model="cityQuery" @submit="submitCity" @loaded="onSearchBarLoaded($event)"/>
 
-        <SegmentedBar>
-          <SegmentedBarItem title="Today" />
-          <SegmentedBarItem title="Tomorrow" />
-          <SegmentedBarItem title="Other" />
-        </SegmentedBar>
-
-        <Label text="Extra information" class="h2 temperatureCityColor" />
-        <GridLayout columns="2*, 2*" rows="2*, 2*" height="200px">
-          <Label textWrap="true" row="0" col="0" horizontalAlignment="center" verticalAlignment="center" class="temperatureCityColor">
-            <FormattedString v-if="weather.wind">
-              <Span text="Wind speed: " fontWeight="bold"/>
-              <Span :text="weather.wind.speed" />
-              <Span text=" m/s" />
-            </FormattedString>
-          </Label>          
-          <Label textWrap="true" row="0" col="1" horizontalAlignment="center" verticalAlignment="center" class="temperatureCityColor">
+          <Label textWrap="true" class="text-center temperature-view temperatureCityColor">
             <FormattedString v-if="weather.main">
-              <Span text="Humidity: " fontWeight="bold"/>
-              <Span :text="weather.main.humidity" />
-              <Span text="%" />
+              <Span :text="(weather.main.temp % 1 < 0.5) ? Math.floor(weather.main.temp) : Math.ceil(weather.main.temp)" />
+              <Span text=" °C" />
             </FormattedString>
-          </Label>          
-          <Label textWrap="true" row="1" col="0" horizontalAlignment="center" verticalAlignment="center" class="temperatureCityColor">
-            <FormattedString v-if="weather.main">
-              <Span text="Air pressure: " fontWeight="bold"/>
-              <Span :text="weather.main.pressure" />
-              <Span text=" mb" />
-            </FormattedString>
-          </Label>          
-          <Label textWrap="true" row="1" col="1" horizontalAlignment="center" verticalAlignment="center" class="temperatureCityColor">
-            <FormattedString v-if="weather.visibility">
-              <Span text="Visibility: " fontWeight="bold"/>
-              <Span :text="weather.visibility / 1000" />
-              <Span text=" km" />
-            </FormattedString>
-          </Label>              
-        </GridLayout>
-      </StackLayout>
+          </Label>
+
+          <Label :text="weather.name" class="h3 text-center temperatureCityColor" />
+          <Label :text="lastUpdated" class="h4 text-center lastUpdatedColor" />
+
+          <FlexboxLayout alignItems="flex-start" justifyContent="center" class="mt-50">
+            <StackLayout :key="key" v-for="(item, key) in forecast.slice(1,4)" orientation="vertical" width="33%" class="hourlyView">
+              <Label :text="item.dt_txt | getHour" class="text-center p-20"
+                  @loaded="onLabelLoaded" />
+              <Label textWrap="true" class="temperatureCityColor hourly-temperature p-10" height="75" @loaded="onLabelLoaded">
+                <FormattedString>
+                  <Span :text="(item.main.temp % 1 < 0.5) ? Math.floor(item.main.temp) : Math.ceil(item.main.temp)" />
+                  <Span text=" °C" />
+                </FormattedString>
+              </Label>
+              <Label :text="item.weather[0].main" class="text-center p-20"
+                  @loaded="onLabelLoaded" />
+            </StackLayout>
+          </FlexboxLayout>
+
+          <Label text="Extra information" class="h2 temperatureCityColor mt-50" />
+
+          <GridLayout columns="2*, 2*" rows="2*, 2*" height="200px">
+            <Label textWrap="true" row="0" col="0" horizontalAlignment="center" verticalAlignment="center" class="temperatureCityColor" v-show="weather.wind">
+              <FormattedString>
+                <Span text="Wind speed: " fontWeight="bold"/>
+                <Span :text="weather.wind.speed" />
+                <Span text=" m/s" />
+              </FormattedString>
+            </Label>          
+            <Label textWrap="true" row="0" col="1" horizontalAlignment="center" verticalAlignment="center" class="temperatureCityColor" v-show="weather.main">
+              <FormattedString>
+                <Span text="Humidity: " fontWeight="bold"/>
+                <Span :text="weather.main.humidity" />
+                <Span text="%" />
+              </FormattedString>
+            </Label>          
+            <Label textWrap="true" row="1" col="0" horizontalAlignment="center" verticalAlignment="center" class="temperatureCityColor" v-show="weather.main">
+              <FormattedString >
+                <Span text="Air pressure: " fontWeight="bold"/>
+                <Span :text="weather.main.pressure" />
+                <Span text=" mb" />
+              </FormattedString>
+            </Label>          
+            <Label textWrap="true" row="1" col="1" horizontalAlignment="center" verticalAlignment="center" class="temperatureCityColor" v-show="weather.visibility">
+              <FormattedString>
+                <Span text="Visibility: " fontWeight="bold"/>
+                <Span :text="weather.visibility / 1000" />
+                <Span text=" km" />
+              </FormattedString>
+            </Label>              
+          </GridLayout>
+
+          <DockLayout stretchLastChild="false" height="100%" v-show="!locationSearch">
+            <FAB @tap="fabTap()" icon="~/assets/images/geo.png" dock="bottom" rippleColor="#8499f9" class="fab-button"></FAB>
+          </DockLayout>        
+        </StackLayout>
+      </ScrollView>
     </PullToRefresh>
     
   </Page>
@@ -73,6 +94,8 @@ export default {
     return {
       currentViewIndex: 1,
       lastUpdated: null,
+      cityQuery: null,
+      locationSearch: true,
       weather: {
         weather: {
           0: {
@@ -93,14 +116,43 @@ export default {
           deg: 0
         },
         name: ""
-      }
+      },
+      forecast: [],
     };
   },
   methods: {
+    onLabelLoaded(args) {
+      if(args.object.android) {
+        args.object.android.setGravity(17);
+      }
+    },
+    onSearchBarLoaded(event) {
+      if (event.object.android) {
+        setTimeout(() => {
+          event.object.dismissSoftInput();
+          event.object.android.clearFocus();
+        }, 0);
+      }
+    },
+    fabTap() {
+      this.getLocation();
+      this.cityQuery = "";
+    },
+    submitCity(args) {
+      console.log(this.cityQuery);
+      this.locationSearch = false;
+      this.fetchWeather(null, this.cityQuery);
+      this.fetchForecast(null, this.cityQuery);
+    },
     refreshList(args) {
       var pullRefresh = args.object;
       pullRefresh.refreshing = false;
-      this.getLocation();
+      if(this.locationSearch) 
+        this.getLocation();
+      else {
+        this.fetchWeather(null, this.cityQuery);
+        this.fetchForecast(null, this.cityQuery);
+      }
     },
     getLocation() {
       geolocation
@@ -112,7 +164,9 @@ export default {
         .then(
           loc => {
             if (loc) {
-              this.fetchWeather(loc);
+              this.locationSearch = true;
+              this.fetchWeather(loc, null);
+              this.fetchForecast(loc, null);
             }
           },
           e => {
@@ -121,17 +175,38 @@ export default {
           }
         );
     },
-    fetchWeather(loc) {
+    fetchWeather(loc, query) {
       axios
         .get(
-          // `https://api.openweathermap.org/data/2.5/forecast?lat=${loc.latitude}&lon=${loc.longitude}&units=metric&appid=806b02f9dab6137941fb03eab18d9984`
-          `https://api.openweathermap.org/data/2.5/weather?lat=${loc.latitude}&lon=${loc.longitude}&units=metric&appid=806b02f9dab6137941fb03eab18d9984`
+          (loc == null) ?
+            `https://api.openweathermap.org/data/2.5/weather?q=${query.replace(/\s/g, "+")}&units=metric&appid=806b02f9dab6137941fb03eab18d9984` :
+            `https://api.openweathermap.org/data/2.5/weather?lat=${loc.latitude}&lon=${loc.longitude}&units=metric&appid=806b02f9dab6137941fb03eab18d9984`
         )
         .then(res => {
+          console.log("success");
           this.weather = res.data;
-          this.lastUpdated = `Last updated at ${moment(loc.timestamp).format('h:mm:ss a')}`;
+          this.lastUpdated = `Last updated at ${moment().format('HH:mm:ss')}`;
         })
-        .catch(res => console.log(res));    
+        .catch(res => {
+            console.log(res)
+          }
+        );    
+    },
+    fetchForecast(loc, query) { // 3h
+      axios
+        .get(
+          (loc == null) ?
+            `https://api.openweathermap.org/data/2.5/forecast?q=${query.replace(/\s/g, "+")}&units=metric&appid=806b02f9dab6137941fb03eab18d9984` :
+            `https://api.openweathermap.org/data/2.5/forecast?lat=${loc.latitude}&lon=${loc.longitude}&units=metric&appid=806b02f9dab6137941fb03eab18d9984`
+        )
+        .then(res => {
+          console.log("Forecast fetched");
+          this.forecast = res.data.list;
+        })
+        .catch(res => {
+            console.log(res)
+          }
+        );
     },
     pageLoaded() {
       if (app.android && platform.device.sdkVersion >= "21") {
@@ -142,6 +217,11 @@ export default {
   },
   mounted() {
     this.getLocation();
+  },
+  filters: {
+    getHour(value) {
+      return moment(value).format('HH:mm');
+    }
   }
 };
 </script>
@@ -171,8 +251,27 @@ Label {
   font-size: 75px;
 }
 
+.hourly-temperature {
+  font-size: 30px;
+}
+
 .hourlyView {
   margin: 10px;
+  background-color: #8499f9;
+  border-radius: 20px;
+  box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+}
+
+.mt-10 {
+  margin-top: 10px;
+}
+
+.mt-25 {
+  margin-top: 25px;
+}
+
+.mt-50 {
+  margin-top: 50px;
 }
 
 .stackViewFirstChild {
@@ -194,5 +293,15 @@ Label {
 }
 .refresh {
   color: #4e598c;
+}
+
+.fab-button {
+  height: 55;
+  width: 55;
+  background-color: #5876fc;
+  horizontal-align: right;
+  vertical-align: bottom;
+  box-shadow: none;
+  margin: 30px 20px;
 }
 </style>
